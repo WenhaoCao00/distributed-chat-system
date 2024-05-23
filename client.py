@@ -45,7 +45,7 @@ def send_messages(client_socket, server_address, server_port, clock, client_name
                 print("Exiting...")
                 break
             clock.increment()
-            message_id = str(uuid.uuid4())  # 生成唯一消息ID
+            message_id = str(uuid.uuid4())
             full_message = f'CLIENT:{message_id}:{clock.get_time()}:{client_name}:{message}'
             client_socket.sendto(full_message.encode(), (server_address, server_port))
             print(f'Sent to server {server_address}:{server_port}: {full_message}')
@@ -56,10 +56,8 @@ def main():
     service_discovery = ServiceDiscovery()
     service_discovery.start()
 
-    # 等待一段时间以发现服务器
     time.sleep(5)
 
-    # 获取发现的服务器地址
     server_addresses = list(service_discovery.get_servers())
     print("Discovered servers:", server_addresses)
 
@@ -69,26 +67,22 @@ def main():
 
     while True:
         clock = LamportClock()
-        server_address = server_addresses[0]  # 连接到第一个发现的服务器
+        server_address = server_addresses[0]
         server_port = 10001
 
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        client_socket.bind(('0.0.0.0', 0))  # 绑定到一个临时端口
+        client_socket.bind(('0.0.0.0', 0))
         print(f'Client bound to port {client_socket.getsockname()[1]}')
 
-        # 注册名字
         client_name = register_name(client_socket, server_address, server_port)
         if client_name == "NOT_LEADER":
             continue
 
-        # 启动接收消息的线程
         receiver_thread = threading.Thread(target=receive_messages, args=(client_socket,), daemon=True)
         receiver_thread.start()
 
-        # 启动发送消息的逻辑
         send_messages(client_socket, server_address, server_port, clock, client_name)
 
-        # 关闭socket
         client_socket.close()
         print('Socket closed')
         break

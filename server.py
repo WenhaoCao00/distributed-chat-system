@@ -35,7 +35,7 @@ class ChatServer(multiprocessing.Process):
                     response = f'ACCEPTED:{client_name}'
                     self.server_socket.sendto(response.encode(), self.client_address)
                     print(f'Client {client_name} has joined from {self.client_address}')
-                    self.connected_clients.append((client_name, self.client_address))  # 添加到 connected_clients 列表
+                    self.connected_clients.append((client_name, self.client_address))
             else:
                 response = 'NOT_LEADER'
                 self.server_socket.sendto(response.encode(), self.client_address)
@@ -52,15 +52,12 @@ class ChatServer(multiprocessing.Process):
                     self.processed_messages.append(message_id)
                     self.clock.update(received_time)
 
-                    # Broadcast message to all connected clients
                     broadcast_message = f'{client_name}: {message} (Lamport time: {self.clock.get_time()})'
 
                     print("Broadcasting to clients...")
-                    print(self.connected_clients)
                     for client in self.connected_clients:
                         self.server_socket.sendto(broadcast_message.encode(), client[1])
 
-                    # Send acknowledgement to the original sender
                     ack_message = f'SERVER_ACK:{self.clock.get_time()}:{message}'
                     self.server_socket.sendto(ack_message.encode(), self.client_address)
                     print(f'Sent to client {self.client_address}: {ack_message}')
@@ -96,10 +93,8 @@ if __name__ == "__main__":
     service_discovery = ServiceDiscovery()
     service_discovery.start()
 
-    # 等待一段时间以发现其他服务器
     time.sleep(10)
 
-    # 获取发现的服务器地址
     server_addresses = list(service_discovery.get_servers())
     my_ip = get_local_ip()
     if my_ip not in server_addresses:
@@ -107,20 +102,18 @@ if __name__ == "__main__":
     print("Discovered servers:", server_addresses)
     print(f"My IP is {my_ip}")
 
-    # 启动领导者选举
     leader = initiate_election(server_addresses, my_ip)
     is_leader = (leader == my_ip)
     print(f'I am the leader: {is_leader}')
 
-    # 启动服务器
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 允许重用地址和端口
-    server_socket.bind(('0.0.0.0', 10001))  # 绑定到所有可用的网络接口
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('0.0.0.0', 10001))
     print(f'Server up and running on 0.0.0.0:10001')
 
     manager = multiprocessing.Manager()
     connected_clients = manager.list()
     client_names = manager.dict()
-    processed_messages = manager.list()  # 使用列表代替集合
+    processed_messages = manager.list()
     clock = LamportClock()
     server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)
