@@ -1,3 +1,4 @@
+# client.py
 import socket
 import threading
 import os
@@ -20,8 +21,8 @@ def receive_messages(client_socket):
             elif message.startswith("NOT_LEADER"):
                 print("Connected to a non-leader server, reinitiating connection.")
                 return "NOT_LEADER"
-            else:
-                print(f'Received message: {message}')
+            elif not message.startswith("SERVER_ACK"):  # Ignore SERVER_ACK messages
+                print(f'\n{message}\nEnter message to send: ', end='', flush=True)
         except OSError as e:
             print(f"Error receiving data: {e}")
             break
@@ -40,7 +41,7 @@ def register_name(client_socket, server_address, server_port):
 def send_messages(client_socket, server_address, server_port, clock, client_name):
     try:
         while True:
-            message = input("Enter message to send: ")
+            message = input(f"{client_name}: ")
             if message.strip().lower() == "exit":
                 print("Exiting...")
                 break
@@ -48,7 +49,7 @@ def send_messages(client_socket, server_address, server_port, clock, client_name
             message_id = str(uuid.uuid4())
             full_message = f'CLIENT:{message_id}:{clock.get_time()}:{client_name}:{message}'
             client_socket.sendto(full_message.encode(), (server_address, server_port))
-            print(f'Sent to server {server_address}:{server_port}: {full_message}')
+            #print(f'Sent to server {server_address}:{server_port}: {full_message}', end='', flush=True)
     except KeyboardInterrupt:
         print("Client is closing.")
 

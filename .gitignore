@@ -161,6 +161,6 @@ cython_debug/
 
 #ignore total.txt
 total.txt
-ring_election.py
-lamport_clock.py
+broadcast_listener.py
+broadcast_sender.py
 health_check.py

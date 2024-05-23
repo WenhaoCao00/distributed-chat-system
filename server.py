@@ -1,3 +1,4 @@
+# server.py
 import socket
 import multiprocessing
 import os
@@ -56,13 +57,20 @@ class ChatServer(multiprocessing.Process):
 
                     print("Broadcasting to clients...")
                     for client in self.connected_clients:
-                        self.server_socket.sendto(broadcast_message.encode(), client[1])
+                        if client[1] != self.client_address:  # Skip the sender
+                            self.server_socket.sendto(broadcast_message.encode(), client[1])
 
-                    ack_message = f'SERVER_ACK:{self.clock.get_time()}:{message}'
-                    self.server_socket.sendto(ack_message.encode(), self.client_address)
-                    print(f'Sent to client {self.client_address}: {ack_message}')
                 except ValueError as e:
                     print(f"Error processing message: {data}, Error: {e}")
+
+        elif message_type == "NEW_SERVER":
+            new_server_ip = parts[1]
+            if new_server_ip not in self.server_addresses:
+                self.server_addresses.append(new_server_ip)
+                print(f"New server added: {new_server_ip}")
+                leader = initiate_election(self.server_addresses, self.client_address[0])
+                self.is_leader = (leader == self.client_address[0])
+                print(f'I am the leader: {self.is_leader}')
 
 def server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader):
     buffer_size = 1024
@@ -93,7 +101,7 @@ if __name__ == "__main__":
     service_discovery = ServiceDiscovery()
     service_discovery.start()
 
-    time.sleep(10)
+    time.sleep(5)
 
     server_addresses = list(service_discovery.get_servers())
     my_ip = get_local_ip()
