@@ -10,6 +10,7 @@ class ServiceDiscovery:
         self.local_ip = self.get_local_ip()
 
     def is_valid_ip(self, ip):
+        # 仅允许实际局域网的IP地址
         return ip.startswith("192.168.0.") and ip != "127.0.0.1"
 
     def get_local_ip(self):
