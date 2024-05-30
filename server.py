@@ -53,6 +53,7 @@ class ChatServer(multiprocessing.Process):
                     self.processed_messages.append(message_id)
                     self.clock.update(received_time)
 
+                    #this is with Lamport time
                     broadcast_message = f'{client_name}: {message} (Lamport time: {self.clock.get_time()})'
 
                     print("Broadcasting to clients...")
@@ -80,6 +81,13 @@ def server_listener(server_socket, connected_clients, client_names, server_addre
             server_socket.sendto(b'HEARTBEAT_ACK', address)
         elif data == b'SERVICE_DISCOVERY':
             server_addresses.add(address[0])
+
+        elif data == b'IS_LEADER':
+            if is_leader:
+                server_socket.sendto(b'LEADER', address)
+            else:
+                server_socket.sendto(b'NOT_LEADER', address)
+        
         else:
             print(f'Received message \'{data.decode()}\' from {address}')
             p = ChatServer(server_socket, data, address, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)
@@ -101,7 +109,7 @@ if __name__ == "__main__":
     service_discovery = ServiceDiscovery()
     service_discovery.start()
 
-    time.sleep(5)
+    time.sleep(10)
 
     server_addresses = list(service_discovery.get_servers())
     my_ip = get_local_ip()

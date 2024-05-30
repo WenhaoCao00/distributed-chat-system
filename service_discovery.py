@@ -11,7 +11,7 @@ class ServiceDiscovery:
         self.local_ip = self.get_local_ip()
 
     def is_valid_ip(self, ip):
-        return ip.startswith("192.168.0.") and ip != "127.0.0.1"
+        return ip.startswith("192.168.0.") and ip != "127.0.0.1"  #return LAN and not localhost
 
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
