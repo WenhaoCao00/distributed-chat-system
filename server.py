@@ -81,13 +81,19 @@ def server_listener(server_socket, connected_clients, client_names, server_addre
             server_socket.sendto(b'HEARTBEAT_ACK', address)
         elif data == b'SERVICE_DISCOVERY':
             server_addresses.add(address[0])
-
+        elif data.startswith(b'NEW_SERVER:'):
+            new_server_ip = data.decode().split(':')[1]
+            if new_server_ip not in server_addresses:
+                server_addresses.append(new_server_ip)
+                print(f"New server added: {new_server_ip}")
+                leader = initiate_election(server_addresses, my_ip)
+                is_leader = (leader == my_ip)
+                print(f'I am the leader: {is_leader}')
         elif data == b'IS_LEADER':
             if is_leader:
                 server_socket.sendto(b'LEADER', address)
             else:
                 server_socket.sendto(b'NOT_LEADER', address)
-        
         else:
             print(f'Received message \'{data.decode()}\' from {address}')
             p = ChatServer(server_socket, data, address, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)

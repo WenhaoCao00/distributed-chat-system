@@ -86,6 +86,7 @@ class ChatClient:
         self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.client_socket.bind(('0.0.0.0', 0))
 
+
     def main(self):
         server_addresses = self.discover_servers()
         print("Discovered servers:", server_addresses)
