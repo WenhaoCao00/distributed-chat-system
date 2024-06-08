@@ -3,6 +3,10 @@ import socket
 import threading
 import time
 
+import server
+from ring_election import initiate_election
+
+
 class ServiceDiscovery:
     def __init__(self, port=50000, broadcast_ip="255.255.255.255"):
         self.port = port
@@ -65,6 +69,15 @@ class ServiceDiscovery:
     def start(self):
         threading.Thread(target=self.send_broadcast, daemon=True).start()
         threading.Thread(target=self.listen_for_broadcast, daemon=True).start()
+        threading.Thread(target=self.heartbeat, daemon=True).start()
+
+    def heartbeat(self, server_addresses):
+        while True:
+            time.sleep(7)
+            leader = initiate_election(server_addresses, server.my_ip)
+            is_leader = (leader == server.my_ip)
+            print(f'I am the leader: {is_leader}')
 
     def get_servers(self):
+        print(self.server_addresses)
         return list(self.server_addresses)
