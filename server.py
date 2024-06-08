@@ -105,6 +105,7 @@ def get_local_ip():
         s.close()
     return ip
 
+
 if __name__ == "__main__":
     service_discovery = ServiceDiscovery()
     service_discovery.start()
@@ -118,9 +119,11 @@ if __name__ == "__main__":
     print("Discovered servers:", server_addresses)
     print(f"My IP is {my_ip}")
 
-    leader = initiate_election(server_addresses, my_ip)
-    is_leader = (leader == my_ip)
-    print(f'I am the leader: {is_leader}')
+    # leader = initiate_election(server_addresses, my_ip)
+    # is_leader = (leader == my_ip)
+    # print(f'I am the leader: {is_leader}')
+
+
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
