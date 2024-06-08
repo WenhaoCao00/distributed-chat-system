@@ -10,10 +10,9 @@ class ChatClient:
         self.service_discovery = ServiceDiscovery()
         self.clock = LamportClock()
         self.server_port = 10001
-        self.client_name = None
         self.leader_address = None
         self.client_socket = None
-
+        self.client_name = None
     def receive_messages(self):
         while True:
             try:
@@ -33,18 +32,28 @@ class ChatClient:
             except OSError as e:
                 print(f"\rError receiving data: {e}\n", end='', flush=True)
                 break
-
+    def get_local_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = socket.gethostbyname(socket.gethostname())
+        finally:
+            s.close()
+        return ip
     def register_name(self):
-        while True:
-            name = input("Enter your name: ")
-            register_message = f'REGISTER:{name}'
-            self.client_socket.sendto(register_message.encode(), (self.leader_address, self.server_port))
-            result = self.receive_messages()
-            if result == "NOT_LEADER":
-                return "NOT_LEADER"
-            elif result:
-                self.client_name = name
-                return name
+        
+        self.client_name = f'({self.get_local_ip()}:{self.client_socket.getsockname()[1]})'  # Get the client's IP and port
+        print(self.client_name)
+        register_message = f'REGISTER:{self.client_name}'
+        self.client_socket.sendto(register_message.encode(), (self.leader_address, self.server_port))
+        result = self.receive_messages()
+        if result == "NOT_LEADER":
+            return "NOT_LEADER"
+        elif result:
+            return self.client_name
+
 
     def send_messages(self):
         try:
@@ -89,7 +98,7 @@ class ChatClient:
     def main(self):
         server_addresses = self.discover_servers()
         print("Discovered servers:", server_addresses)
-
+    
         if not server_addresses:
             print("No servers discovered, exiting.")
             return
@@ -102,7 +111,7 @@ class ChatClient:
         while True:
             self.create_socket()
             print(f'Client bound to port {self.client_socket.getsockname()[1]}')
-
+            
             client_name = self.register_name()
             if client_name == "NOT_LEADER":
                 self.leader_address = self.find_leader(server_addresses)
