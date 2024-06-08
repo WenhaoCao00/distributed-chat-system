@@ -1,6 +1,6 @@
-# ring_election.py
 import socket
 import json
+import time
 
 def form_ring(members):
     sorted_binary_ring = sorted([socket.inet_aton(member) for member in members])
@@ -40,6 +40,8 @@ def initiate_election(members, my_ip):
         print(f"Error sending election message: {e}")
         return None
 
+    election_socket.settimeout(8)  # 设置超时时间为10秒
+
     while True:
         try:
             data, addr = election_socket.recvfrom(1024)
@@ -57,6 +59,11 @@ def initiate_election(members, my_ip):
                 leader_message = {"mid": my_ip, "isLeader": True}
                 election_socket.sendto(json.dumps(leader_message).encode(), (neighbour, 10002))
                 return my_ip
+        except socket.timeout:
+            print("Election timeout, no response received.")
+            break
         except OSError as e:
             print(f"Error receiving or processing message: {e}")
             break
+
+    return None  # 超时或出错时返回None

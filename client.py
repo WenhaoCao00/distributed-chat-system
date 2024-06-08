@@ -77,7 +77,7 @@ class ChatClient:
     def discover_servers(self):
         self.service_discovery.start()
         time.sleep(5)
-        return list(self.service_discovery.get_servers())
+        return [ip[0] for ip in self.service_discovery.get_servers()]
 
     def create_socket(self):
         if self.client_socket:
@@ -93,7 +93,6 @@ class ChatClient:
         if not server_addresses:
             print("No servers discovered, exiting.")
             return
-        
         self.leader_address = self.find_leader(server_addresses)
         if self.leader_address is None:
             print("No leader found, exiting.")

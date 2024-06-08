@@ -1,11 +1,13 @@
 # server.py
 import socket
 import multiprocessing
+import threading
 import os
 import time
 from service_discovery import ServiceDiscovery
 from lamport_clock import LamportClock
 from ring_election import initiate_election
+from heartbeat import Heartbeat
 
 class ChatServer(multiprocessing.Process):
     def __init__(self, server_socket, received_data, client_address, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader):
@@ -64,12 +66,13 @@ class ChatServer(multiprocessing.Process):
                 except ValueError as e:
                     print(f"Error processing message: {data}, Error: {e}")
 
+
         elif message_type == "NEW_SERVER":
             new_server_ip = parts[1]
-            if new_server_ip not in self.server_addresses:
-                self.server_addresses.append(new_server_ip)
+            if new_server_ip not in [ip[0] for ip in self.server_addresses]:
+                self.server_addresses.append([new_server_ip, False])
                 print(f"New server added: {new_server_ip}")
-                leader = initiate_election(self.server_addresses, self.client_address[0])
+                leader = initiate_election([ip[0] for ip in self.server_addresses], self.client_address[0])
                 self.is_leader = (leader == self.client_address[0])
                 print(f'I am the leader: {self.is_leader}')
 
@@ -80,8 +83,8 @@ def server_listener(server_socket, connected_clients, client_names, server_addre
         if data == b'HEARTBEAT':
             server_socket.sendto(b'HEARTBEAT_ACK', address)
         elif data == b'SERVICE_DISCOVERY':
-            server_addresses.add(address[0])
-
+            if address[0] not in [ip[0] for ip in server_addresses]:
+                server_addresses.append([address[0], False])
         elif data == b'IS_LEADER':
             if is_leader:
                 server_socket.sendto(b'LEADER', address)
@@ -118,8 +121,12 @@ if __name__ == "__main__":
     print("Discovered servers:", server_addresses)
     print(f"My IP is {my_ip}")
 
-    leader = initiate_election(server_addresses, my_ip)
+    leader = initiate_election([ip[0] for ip in server_addresses], my_ip)
+    print("finish leader election")
     is_leader = (leader == my_ip)
+    for server in server_addresses:
+        if server[0] == leader:
+            server[1] = True
     print(f'I am the leader: {is_leader}')
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -132,4 +139,10 @@ if __name__ == "__main__":
     client_names = manager.dict()
     processed_messages = manager.list()
     clock = LamportClock()
+
+    heartbeat = Heartbeat(service_discovery)
+    heartbeat_thread = threading.Thread(target=heartbeat.check_leader)
+    heartbeat_thread.daemon = True
+    heartbeat_thread.start()
+
     server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)
