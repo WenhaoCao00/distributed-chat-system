@@ -34,9 +34,24 @@ class ChatClient:
                 print(f"\rError receiving data: {e}\n", end='', flush=True)
                 break
 
+    def get_local_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = socket.gethostbyname(socket.gethostname())
+        finally:
+            s.close()
+        return ip
+
+
     def register_name(self):
+        ip = self.get_local_ip()
+        port = self.client_socket.getsockname()[1]
         while True:
-            name = input("Enter your name: ")
+
+            name = f"({ip}/{port})"
             register_message = f'REGISTER:{name}'
             self.client_socket.sendto(register_message.encode(), (self.leader_address, self.server_port))
             result = self.receive_messages()
