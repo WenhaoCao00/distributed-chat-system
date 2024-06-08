@@ -140,9 +140,9 @@ if __name__ == "__main__":
     processed_messages = manager.list()
     clock = LamportClock()
 
-    heartbeat = Heartbeat(service_discovery)
-    heartbeat_thread = threading.Thread(target=heartbeat.check_leader)
-    heartbeat_thread.daemon = True
-    heartbeat_thread.start()
+    # heartbeat = Heartbeat(service_discovery)
+    # heartbeat_thread = threading.Thread(target=heartbeat.check_leader)
+    # heartbeat_thread.daemon = True
+    # heartbeat_thread.start()
 
     server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)
