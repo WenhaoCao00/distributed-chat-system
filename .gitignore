@@ -161,6 +161,7 @@ cython_debug/
 
 #ignore total.txt
 total.txt
+2.txt
 broadcast_listener.py
 broadcast_sender.py
 health_check.py

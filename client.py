@@ -3,6 +3,7 @@ import threading
 import time
 import uuid
 from service_discovery import ServiceDiscovery
+from ring_election import initiate_election
 from lamport_clock import LamportClock
 
 class ChatClient:
@@ -13,6 +14,8 @@ class ChatClient:
         self.client_name = None
         self.leader_address = None
         self.client_socket = None
+        self.unconfirmed_messages = {}  # 保存未确认的消息
+        self.ack_received = threading.Event()
 
     def receive_messages(self):
         while True:
@@ -28,7 +31,18 @@ class ChatClient:
                 elif message.startswith("NOT_LEADER"):
                     print("\rConnected to a non-leader server, reinitiating connection.\n", end='', flush=True)
                     return "NOT_LEADER"
-                elif not message.startswith("SERVER_ACK"):
+                elif message.startswith("NEW_LEADER"):  
+                    new_leader_ip = message.split(':')[1]
+                    print(f"\rNew leader elected: {new_leader_ip}\n", end='', flush=True)
+                    self.leader_address = new_leader_ip
+                elif message.startswith("SERVER_ACK"):
+                    msg_id = message.split(':')[1]
+                    print(f"\rMessage {msg_id} confirmed by server.\n{self.client_name}: ", end='', flush=True)
+                    if msg_id in self.unconfirmed_messages:
+                        del self.unconfirmed_messages[msg_id]
+                    self.ack_received.set()
+                else:
+                    
                     print(f"\r{message}\n{self.client_name}: ", end='', flush=True)
             except OSError as e:
                 print(f"\rError receiving data: {e}\n", end='', flush=True)
@@ -71,9 +85,26 @@ class ChatClient:
                 self.clock.increment()
                 message_id = str(uuid.uuid4())
                 full_message = f'CLIENT:{message_id}:{self.clock.get_time()}:{self.client_name}:{message}'
-                self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
+                self.unconfirmed_messages[message_id] = full_message
+
+                while message_id in self.unconfirmed_messages:
+                    self.ack_received.clear()
+                    self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
+                    if not self.ack_received.wait(5):
+                        print("No ACK received, initiating re-election...")
+                        self.initiate_re_election()
+                        if self.leader_address is None:
+                            print("No leader found after re-election, exiting.")
+                            return
+                        self.resend_unconfirmed_messages()
+                #self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
         except KeyboardInterrupt:
             print("Client is closing.")
+
+    def resend_unconfirmed_messages(self):
+        for full_message in self.unconfirmed_messages.items():
+            self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
+            print(f"Resent unconfirmed message: {full_message}")
 
     def find_leader(self, server_addresses):
         self.create_socket()  # Ensure the socket is created before trying to use it
@@ -88,6 +119,14 @@ class ChatClient:
                 print(f"Connection to {server_address} was reset. Trying next server...")
                 continue
         return None
+    
+    def initiate_re_election(self):
+        server_addresses = self.discover_servers()
+        if not server_addresses:
+            return None
+        initiate_election(server_addresses, self.get_local_ip())
+        self.leader_address = self.find_leader(server_addresses) 
+        
 
     def discover_servers(self):
         self.service_discovery.start()

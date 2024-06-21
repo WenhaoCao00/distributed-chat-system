@@ -53,6 +53,10 @@ class ChatServer(multiprocessing.Process):
                     self.processed_messages.append(message_id)
                     self.clock.update(received_time)
 
+                    #send ack to client
+                    ack_message = f'SERVER_ACK:{message_id}'
+                    self.server_socket.sendto(ack_message.encode(), self.client_address)
+
                     #this is with Lamport time
                     broadcast_message = f'{client_name}: {message} (Lamport time: {self.clock.get_time()})'
 
@@ -72,14 +76,20 @@ class ChatServer(multiprocessing.Process):
                 leader = initiate_election(self.server_addresses, self.client_address[0])
                 self.is_leader = (leader == self.client_address[0])
                 print(f'I am the leader: {self.is_leader}')
+                if self.is_leader:
+                    self.broadcast_new_leader()
+
+    def broadcast_new_leader(self):
+        leader_message = f'NEW_LEADER:{self.client_address[0]}'
+        for client in self.connected_clients:
+            self.server_socket.sendto(leader_message.encode(), client[1])
+        print(f"Broadcasted new leader: {self.client_address[0]}")
 
 def server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader):
     buffer_size = 1024
     while True:
         data, address = server_socket.recvfrom(buffer_size)
-        if data == b'HEARTBEAT':
-            server_socket.sendto(b'HEARTBEAT_ACK', address)
-        elif data == b'SERVICE_DISCOVERY':
+        if data == b'SERVICE_DISCOVERY':
             server_addresses.add(address[0])
 
         elif data == b'IS_LEADER':
