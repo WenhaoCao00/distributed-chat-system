@@ -53,6 +53,7 @@ class ChatServer(multiprocessing.Process):
                     self.processed_messages.append(message_id)
                     self.clock.update(received_time)
 
+
                     #send ack to client
                     ack_message = f'SERVER_ACK:{message_id}'
                     self.server_socket.sendto(ack_message.encode(), self.client_address)
@@ -85,6 +86,14 @@ class ChatServer(multiprocessing.Process):
             self.server_socket.sendto(leader_message.encode(), client[1])
         print(f"Broadcasted new leader: {self.client_address[0]}")
 
+#新增同步客户端信息的方法
+    # def sync_client_info(self, client_name, client_address):
+    #     # 同步客户端信息给其他服务器
+    #     sync_message = f'SYNC_CLIENT:{client_name}:{client_address[0]}:{client_address[1]}'
+    #     for server_address in self.server_addresses:
+    #         if server_address != self.client_address[0]:
+    #             self.server_socket.sendto(sync_message.encode(), (server_address, self.server_port))
+
 def server_listener(server_socket, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader):
     buffer_size = 1024
     while True:
@@ -99,6 +108,18 @@ def server_listener(server_socket, connected_clients, client_names, server_addre
                 server_socket.sendto(b'NOT_LEADER', address)
         
         else:
+            #新增代码
+            # message = data.decode()
+            # if message.startswith('SYNC_CLIENT'):
+            #     parts = message.split(':')
+            #     client_name = parts[1]
+            #     client_ip = parts[2]
+            #     client_port = int(parts[3])
+            #     client_address = (client_ip, client_port)
+            #     if client_name not in client_names:
+            #         client_names[client_name] = client_address
+            #         connected_clients.append((client_name, client_address))
+            #         print(f'Synchronized client {client_name} from {client_address}')
             print(f'Received message \'{data.decode()}\' from {address}')
             p = ChatServer(server_socket, data, address, connected_clients, client_names, server_addresses, processed_messages, clock, is_leader)
             p.start()

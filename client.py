@@ -35,6 +35,7 @@ class ChatClient:
                     new_leader_ip = message.split(':')[1]
                     print(f"\rNew leader elected: {new_leader_ip}\n", end='', flush=True)
                     self.leader_address = new_leader_ip
+                    self.register_name() # Re-register with the new leader
                 elif message.startswith("SERVER_ACK"):
                     msg_id = message.split(':')[1]
                     print(f"\rMessage {msg_id} confirmed by server.\n{self.client_name}: ", end='', flush=True)
@@ -93,18 +94,25 @@ class ChatClient:
                     if not self.ack_received.wait(5):
                         print("No ACK received, initiating re-election...")
                         self.initiate_re_election()
-                        if self.leader_address is None:
-                            print("No leader found after re-election, exiting.")
-                            return
-                        self.resend_unconfirmed_messages()
+                        # if self.leader_address is None:
+                        #     print("No leader found after re-election, exiting.")
+                        #     return
+                        break
+                        
+                        #self.resend_unconfirmed_messages()
                 #self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
         except KeyboardInterrupt:
             print("Client is closing.")
 
-    def resend_unconfirmed_messages(self):
-        for full_message in self.unconfirmed_messages.items():
-            self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
-            print(f"Resent unconfirmed message: {full_message}")
+    # def resend_unconfirmed_messages(self):
+        
+    #     for message_id, full_message in self.unconfirmed_messages.items():
+    #         if isinstance(full_message, str):
+    #             self.client_socket.sendto(full_message.encode(), (self.leader_address, self.server_port))
+    #             print(f"Resent unconfirmed message: {full_message}")
+    #         else:
+    #             print(f"Message {message_id} is not a string, skipping...")
+
 
     def find_leader(self, server_addresses):
         self.create_socket()  # Ensure the socket is created before trying to use it
@@ -126,6 +134,11 @@ class ChatClient:
             return None
         initiate_election(server_addresses, self.get_local_ip())
         self.leader_address = self.find_leader(server_addresses) 
+        if self.leader_address is None:
+            print("No leader found after re-election, exiting.")
+            return
+        # 在新的Leader上重新注册
+        self.register_name()
         
 
     def discover_servers(self):
